@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
 };
 
-type EventListener = dyn Fn(&dyn Any);
+type EventListener = dyn FnMut(&dyn Any);
 
 #[derive(Default)]
 pub struct EventDispatcher {
@@ -15,7 +15,7 @@ impl EventDispatcher {
         Self::default()
     }
 
-    pub fn add_listener<E: 'static, L: Fn(&E) + 'static>(&mut self, listener: L) {
+    pub fn add_listener<E: 'static, L: FnMut(&E) + 'static>(&mut self, mut listener: L) {
         self.listeners.entry(TypeId::of::<E>()).or_default().insert(
             TypeId::of::<L>(),
             Box::new(move |event| {
@@ -26,16 +26,16 @@ impl EventDispatcher {
         );
     }
 
-    pub fn remove_listener<E: 'static, L: Fn(&E) + 'static>(&mut self, _: L) {
+    pub fn remove_listener<E: 'static, L: FnMut(&E) + 'static>(&mut self, _: L) {
         self.listeners
             .entry(TypeId::of::<E>())
             .or_default()
             .remove(&TypeId::of::<L>());
     }
 
-    pub fn dispatch<E: 'static>(&self, event: &E) {
-        if let Some(listeners) = self.listeners.get(&TypeId::of::<E>()) {
-            for listener in listeners.values() {
+    pub fn dispatch<E: 'static>(&mut self, event: &E) {
+        if let Some(listeners) = self.listeners.get_mut(&TypeId::of::<E>()) {
+            for listener in listeners.values_mut() {
                 listener(event);
             }
         };
